@@ -40,7 +40,8 @@ export default function HomePage() {
   const [superheroes, setSuperheroes] = useState<Superhero[]>([]);
   const [sortOrder, setSortOrder] = useState<"asc" | "dsc">("asc");
   const [isLoading, setIsLoading] = useState(false);
-
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  const [addError, setAddError] = useState<string | null>(null);
   const { theme, setTheme } = useTheme();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -54,16 +55,19 @@ export default function HomePage() {
     resolver: yupResolver(superheroSchema),
   });
 
-  // Function to fetch superheroes with sort order
   const fetchSuperheroes = async (order: "asc" | "dsc") => {
     setIsLoading(true);
+    setFetchError(null);
     try {
       const response = await axios.get<SuperheroResponse>(
         `http://localhost:5000/superheroes?order=${order}`
       );
       setSuperheroes(response.data.data);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to fetch superheroes:", error);
+      setFetchError(
+        error.response?.data?.message || "Failed to fetch superheroes."
+      );
     } finally {
       setIsLoading(false);
     }
@@ -89,6 +93,7 @@ export default function HomePage() {
   }, [sortOrder]);
 
   const onSubmit = async (data: Superhero) => {
+    setAddError(null);
     try {
       const response = await axios.post(
         "http://localhost:5000/superheroes",
@@ -100,9 +105,11 @@ export default function HomePage() {
         reset();
       } else {
         console.error("Failed to add superhero:", response.data.message);
+        setAddError(response.data.message || "Failed to add superhero.");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error adding superhero:", error);
+      setAddError(error.response?.data?.message || "Error adding superhero.");
     }
   };
 
@@ -147,6 +154,13 @@ export default function HomePage() {
         transition={{ duration: 0.3 }}
         className="w-full md:w-96 p-5 bg-neutral-100 dark:bg-neutral-800 rounded-md shadow-md flex-none"
       >
+        {/* Display addError if exists */}
+        {addError && (
+          <div className="mb-4 p-3 bg-rose-100 text-rose-700 rounded">
+            {addError}
+          </div>
+        )}
+
         <div className="mb-5">
           <label className="block mb-2 text-teal-600 dark:text-teal-400">
             Name
@@ -229,6 +243,13 @@ export default function HomePage() {
           </button>
         </div>
 
+        {/* Display fetchError if exists */}
+        {fetchError && (
+          <div className="mb-4 p-3 bg-rose-100 text-rose-700 rounded">
+            {fetchError}
+          </div>
+        )}
+
         {/* Superhero List */}
         <div className="flex-1 p-5 overflow-auto">
           {isLoading ? (
@@ -256,10 +277,14 @@ export default function HomePage() {
               </AutoSizer>
             </motion.div>
           ) : (
-            <div className="h-full flex flex-col gap-4 items-center justify-center text-center text-neutral-500 dark:text-neutral-400">
-              <p>No superheroes added yet!</p>
-              <p>Add some to see the list here.</p>
-            </div>
+            <>
+              {!fetchError && (
+                <div className="h-full flex flex-col gap-4 items-center justify-center text-center text-neutral-500 dark:text-neutral-400">
+                  <p>No superheroes added yet!</p>
+                  <p>Add some to see the list here.</p>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
